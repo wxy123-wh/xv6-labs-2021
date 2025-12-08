@@ -14,6 +14,7 @@
 #include "riscv.h"
 #include "defs.h"
 #include "proc.h"
+#include "ansi.h"
 
 volatile int panicked = 0;
 
@@ -58,6 +59,57 @@ printptr(uint64 x)
   for (i = 0; i < (sizeof(uint64) * 2); i++, x <<= 4)
     consputc(digits[x >> (sizeof(uint64) * 8 - 4)]);
 }
+
+// 基础彩色打印函数
+
+void printf_color(char* color, char* fmt)
+ {
+    printf("%s", color);    // 输出颜色代码
+    printf(fmt);            // 输出内容
+    printf("%s", ANSI_RESET); // 重置颜色
+}
+
+void printf_red(char* fmt)
+ {
+    printf("%s"
+, ANSI_RED);
+    printf
+(fmt);
+    printf("%s"
+, ANSI_RESET);
+}
+
+void printf_green(char* fmt)
+ {
+    printf("%s"
+, ANSI_GREEN);
+    printf
+(fmt);
+    printf("%s"
+, ANSI_RESET);
+}
+
+void printf_yellow(char* fmt)
+ {
+    printf("%s"
+, ANSI_YELLOW);
+    printf
+(fmt);
+    printf("%s"
+, ANSI_RESET);
+}
+
+void printf_blue(char* fmt)
+ {
+    printf("%s"
+, ANSI_BLUE);
+    printf
+(fmt);
+    printf("%s"
+, ANSI_RESET);
+}
+
+// 检测ANSI颜色支持
 
 // Print to the console. only understands %d, %x, %p, %s.
 void

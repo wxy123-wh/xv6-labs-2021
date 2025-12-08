@@ -193,9 +193,12 @@ UPROGS=\
 	$U/_grind\
 	$U/_wc\
 	$U/_zombie\
-
-
-
+ 	$U/_mytest\
+	$U/_mytest2\
+	$U/_mytest3\
+	$U/_mytest4\
+	$U/_finaltest\
+	$U/_test1\
 
 ifeq ($(LAB),$(filter $(LAB), pgtbl lock))
 UPROGS += \

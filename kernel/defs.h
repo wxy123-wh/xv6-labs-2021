@@ -8,7 +8,6 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
-
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);
@@ -181,6 +180,15 @@ void            plic_complete(int);
 void            virtio_disk_init(void);
 void            virtio_disk_rw(struct buf *, int);
 void            virtio_disk_intr(void);
-
+// 彩色打印函数声明
+void printf_color(char* color, char* fmt);
+void printf_red(char* fmt);
+void printf_green(char* fmt);
+void printf_yellow(char* fmt);
+void printf_blue(char* fmt);
+uint64 sys_newtime(void);
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+extern int sched_policy;
+extern volatile uint64 boot_t_start, boot_t_end;
+extern uint64 timebase_hz;

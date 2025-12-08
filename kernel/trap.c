@@ -23,16 +23,22 @@ trapinit(void)
 }
 
 // set up to take exceptions and traps while in the kernel.
-void
-trapinithart(void)
+void trapinithart(void)
 {
   w_stvec((uint64)kernelvec);
+  w_sie(r_sie() | SIE_SSIE | SIE_SEIE);
+  intr_on();
+#ifdef DEBUG_TRAP
+  printf("[trapinithart] sie=%p sstatus=%p\n", r_sie(), r_sstatus());
+#endif
 }
 
 //
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
 //
+// 需有声明：extern int on_tick_running(struct proc *p);
+
 void
 usertrap(void)
 {
@@ -41,33 +47,40 @@ usertrap(void)
   if((r_sstatus() & SSTATUS_SPP) != 0)
     panic("usertrap: not from user mode");
 
-  // send interrupts and exceptions to kerneltrap(),
-  // since we're now in the kernel.
+  // 进入内核，切换向量
   w_stvec((uint64)kernelvec);
 
   struct proc *p = myproc();
-  
-  // save user program counter.
+
+  // 保存用户态 PC
   p->trapframe->epc = r_sepc();
-  
+
   if(r_scause() == 8){
     // system call
-
     if(p->killed)
       exit(-1);
 
-    // sepc points to the ecall instruction,
-    // but we want to return to the next instruction.
+    // 跳过 ecall 指令
     p->trapframe->epc += 4;
 
-    // an interrupt will change sstatus &c registers,
-    // so don't enable until done with those registers.
     intr_on();
-
     syscall();
+
   } else if((which_dev = devintr()) != 0){
-    // ok
+    // 设备中断
+    if (which_dev == 2){ // TIMER
+      // 仅当当前进程存在且处于 RUNNING 时处理时间片
+      if (p && p->state == RUNNING){
+        int need_yield = on_tick_running(p);
+        // 如果时间片耗尽或策略要求让出，则在此让出 CPU
+        if (need_yield){
+          // 注意：这里不能持有 p->lock
+          yield();
+        }
+      }
+    }
   } else {
+    // 其他异常
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;
@@ -76,12 +89,12 @@ usertrap(void)
   if(p->killed)
     exit(-1);
 
-  // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
-    yield();
+  // 原先这里在 which_dev==2 时无条件 yield；现在已改为在定时器分支中根据返回值决定
+  // if(which_dev == 2) yield();
 
   usertrapret();
 }
+
 
 //
 // return to user space

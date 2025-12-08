@@ -82,6 +82,9 @@ struct trapframe {
 
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+extern int on_tick_running(struct proc *p);
+extern int on_wakeup(struct proc *p);
+
 // Per-process state
 struct proc {
   struct spinlock lock;
@@ -92,7 +95,15 @@ struct proc {
   int killed;                  // If non-zero, have been killed
   int xstate;                  // Exit status to be returned to parent's wait
   int pid;                     // Process ID
-
+  //优先级调度
+  int priority;   
+  int wait_time;
+    // 队列链接指针（MLQ和可选的优先级队列实现都需）
+  struct proc *rq_next;
+  struct proc *rq_prev;
+  // 记录所在队列层级（仅 MLQ 使用）
+  int qlevel;
+  int cur_qslice_left;
   // wait_lock must be held when using this:
   struct proc *parent;         // Parent process
 
@@ -106,3 +117,33 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 };
+struct multilevel_queue {
+  struct proc *head[MLQ_LEVELS];
+  struct proc *tail[MLQ_LEVELS];
+};
+
+extern struct multilevel_queue mlq;
+
+static inline int prio_to_mlq_level(int prio){
+  if(prio <= 5)  return MLQ_HIGH;
+  if(prio <= 10) return MLQ_MEDIUM;
+  return MLQ_LOW;
+}
+
+static inline int qslice_for_level(int lvl){
+  switch(lvl){
+    case MLQ_HIGH:   return QSLICE_HIGH;
+    case MLQ_MEDIUM: return QSLICE_MEDIUM;
+    default:         return QSLICE_LOW;
+  }
+}
+static inline struct proc** mlq_head_ref(int lvl){
+  // 防御：越界时返回最低层的 head
+  if(lvl < MLQ_HIGH || lvl > MLQ_LOW) lvl = MLQ_LOW;
+  return &mlq.head[lvl];
+}
+
+static inline struct proc** mlq_tail_ref(int lvl){
+  if(lvl < MLQ_HIGH || lvl > MLQ_LOW) lvl = MLQ_LOW;
+  return &mlq.tail[lvl];
+}
