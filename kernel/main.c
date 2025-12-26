@@ -75,14 +75,19 @@ main()
     virtio_disk_init();
     userinit();
     // 在初始化后添加
-printf("检查时钟中断...\n");
-uint initial_ticks = ticks;
-for (int i = 0; i < 1000000; i++) { /* 空循环 */ }
-if (ticks == initial_ticks) {
-    printf("警告: 时钟中断可能未工作！\n");
-} else {
-    printf("时钟中断正常，ticks 已更新: %d -> %d\n", initial_ticks, ticks);
-}
+    printf("检查时钟中断...\n");
+    uint64 initial_ticks = sys_mycall();
+    uint64 current_ticks = initial_ticks;
+    const int max_spin = 20000000; // 提前等待一段时间，确保看到至少一个时钟中断
+    for (int i = 0; i < max_spin && current_ticks == initial_ticks; i++) {
+        current_ticks = sys_mycall();
+    }
+    if (current_ticks == initial_ticks) {
+        printf("警告: 时钟中断未在预期时间内到达，ticks 仍为 %d\n", (uint)initial_ticks);
+    } else {
+        printf("时钟中断正常，ticks 已更新: %d -> %d\n", (uint)initial_ticks, (uint)current_ticks);
+    }
+
     uint64 end_time = sys_mycall();
     uint64 duration = end_time - start_time;
     printf("启动结束时间: %d ticks\n", end_time);

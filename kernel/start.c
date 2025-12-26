@@ -37,6 +37,8 @@ start()
   w_medeleg(0xffff);
   w_mideleg(0xffff);
   w_sie(r_sie() | SIE_SEIE | SIE_STIE | SIE_SSIE);
+  // Allow S-mode to read cycle/time/instret counters; otherwise rdtime in the kernel traps.
+  w_mcounteren(0xffffffff);
 
   // configure Physical Memory Protection to give supervisor mode
   // access to all of physical memory.
